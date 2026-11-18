@@ -116,20 +116,52 @@ SwanShellImageBuilder.exe thumb cover.png      thumb.bmp
 ## Antivirus warnings
 
 Some antivirus programs may flag the freshly built `SwanShellImageBuilder.exe`, for example
-Malwarebytes with **`MachineLearning/Anomalous`**. This is a heuristic, not a known malware
-signature: the program is compiled on your own PC a moment before, so no antivirus has ever seen
-that exact file, it is not digitally signed, and small unsigned .NET programs that write files and
-download images look "unusual" to these models.
+Malwarebytes with **`MachineLearning/Anomalous`**.
 
-The whole program is the single source file in this repository, which you can read before
-building it. If your antivirus blocks it you can:
+### What the detection means
 
-- check the exe on [VirusTotal](https://www.virustotal.com): one or two generic detections
-  ("ML", "Heuristic", "Generic") are typical false positives;
-- exclude just that file in your antivirus (in Malwarebytes: *Ignore always*);
-- report it as a false positive — for Malwarebytes in the
+`MachineLearning/Anomalous` is not a malware signature. Malwarebytes' machine-learning engine
+compares a file with the known-good software it was trained on, and reports it as *anomalous* when
+it does not look like anything it knows. It does not mean the file is malicious. Here it happens
+because:
+
+- the exe is compiled on your own PC a moment before, so no antivirus has ever seen that exact file;
+- it is not digitally signed;
+- it is a small, new .NET program that reads folders, writes files and downloads images.
+
+The program is not packed or obfuscated, and it carries consistent version information
+(description, author, copyright, version), as Malwarebytes recommends to developers. The whole
+program is the single source file in this repository, which you can read before building it.
+
+### Check it on VirusTotal
+
+1. Open [virustotal.com](https://www.virustotal.com) and choose **File**.
+2. Upload `SwanShellImageBuilder.exe` and wait for the scan.
+3. One or two generic detections ("ML", "Heuristic", "Generic", "Anomalous") among about 70 engines
+   are typical false positives. Many engines reporting a specific, named threat would not be.
+
+### Exclude it from your antivirus
+
+Exclude only the exe (or the folder where you build it), not whole drives.
+
+- **Malwarebytes**: in the detection window choose **Ignore always**; or *Settings → Allow List →
+  Add → Allow a file or folder* and pick the exe.
+- **Microsoft Defender**: *Windows Security → Virus & threat protection → Manage settings →
+  Exclusions → Add or remove exclusions → Add an exclusion → File*. If the exe was already
+  quarantined, restore it from *Protection history* first.
+- Other antivirus programs have a similar "exclusions" or "allow list" setting.
+
+Remember that rebuilding with `build.bat` creates a new file, which may be flagged again.
+
+### Report it as a false positive
+
+- **Malwarebytes**: open a new thread in the
   [File Detections forum](https://forums.malwarebytes.com/forum/42-file-detections/), attaching the
-  exe in a ZIP.
+  exe in a ZIP and naming the detection.
+- **Microsoft Defender**: [submit the file](https://www.microsoft.com/en-us/wdsi/filesubmission) as
+  *Incorrectly detected as malware/malicious*.
+- **Other engines** seen on VirusTotal: each vendor has its own false-positive form, usually linked
+  from its support pages.
 
 ## License
 
