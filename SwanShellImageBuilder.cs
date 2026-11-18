@@ -22,7 +22,9 @@ using System.Windows.Forms;
 
 [assembly: System.Reflection.AssemblyTitle("SwanShell Image Builder")]
 [assembly: System.Reflection.AssemblyProduct("SwanShell Image Builder")]
-[assembly: System.Reflection.AssemblyVersion("1.3.0.0")]
+[assembly: System.Reflection.AssemblyVersion("0.1.0.0")]
+[assembly: System.Reflection.AssemblyFileVersion("0.1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersion("0.1")]
 
 namespace SwanShellImageBuilder
 {
@@ -1844,7 +1846,7 @@ namespace SwanShellImageBuilder
 
         public MainForm()
         {
-            Text = "SwanShell Image Builder — game images for nileswan / SwanShellDX";
+            Text = "SwanShell Image Builder " + Program.Version + " — game images for nileswan / SwanShellDX";
             AutoScaleMode = AutoScaleMode.Font;
             Font = new Font("Segoe UI", 9f);
             MinimumSize = new Size(820, 680);
@@ -2522,6 +2524,8 @@ namespace SwanShellImageBuilder
 
     static class Program
     {
+        public const string Version = "0.1";
+
         [DllImport("user32.dll")]
         static extern bool SetProcessDPIAware();
 
