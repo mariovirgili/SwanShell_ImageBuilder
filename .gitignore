@@ -1,0 +1,6 @@
+# build output
+*.exe
+*.pdb
+
+# local settings: may contain ScreenScraper credentials
+SwanShellImageBuilder.ini
