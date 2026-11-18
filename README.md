@@ -1,8 +1,16 @@
 # SwanShell_ImageBuilder
 
 **SwanShell Image Builder** is a free Windows tool that creates the per-game images shown by the
-**swanshell / SwanShellDX** menu of the **nileswan** flash cartridge for the Bandai WonderSwan /
+**SwanShellDX** menu of the **nileswan** flash cartridge for the Bandai WonderSwan /
 WonderSwan Color.
+
+> **Works only with SwanShellDX.** The game images (full-screen pictures and thumbnails in
+> `NILESWAN\IMAGES`) are a feature of SwanShellDX, an extended build of swanshell. The standard
+> swanshell menu does not show them, so with it the files written by this tool are simply ignored.
+
+**swanshell**, the nileswan menu, is a product of **asie**:
+[github.com/asiekierka/swanshell](https://github.com/asiekierka/swanshell).
+SwanShellDX is built on it; this tool is not affiliated with or endorsed by asie.
 
 It takes the game names from your ROM folder and the pictures from your image folders (or from the
 internet), converts them to the exact format the menu reads, and writes them into the right folders
