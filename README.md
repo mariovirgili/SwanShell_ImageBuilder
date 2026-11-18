@@ -113,6 +113,24 @@ SwanShellImageBuilder.exe full  screenshot.png 1.bmp
 SwanShellImageBuilder.exe thumb cover.png      thumb.bmp
 ```
 
+## Antivirus warnings
+
+Some antivirus programs may flag the freshly built `SwanShellImageBuilder.exe`, for example
+Malwarebytes with **`MachineLearning/Anomalous`**. This is a heuristic, not a known malware
+signature: the program is compiled on your own PC a moment before, so no antivirus has ever seen
+that exact file, it is not digitally signed, and small unsigned .NET programs that write files and
+download images look "unusual" to these models.
+
+The whole program is the single source file in this repository, which you can read before
+building it. If your antivirus blocks it you can:
+
+- check the exe on [VirusTotal](https://www.virustotal.com): one or two generic detections
+  ("ML", "Heuristic", "Generic") are typical false positives;
+- exclude just that file in your antivirus (in Malwarebytes: *Ignore always*);
+- report it as a false positive — for Malwarebytes in the
+  [File Detections forum](https://forums.malwarebytes.com/forum/42-file-detections/), attaching the
+  exe in a ZIP.
+
 ## License
 
 GPL-3.0 — see [LICENSE](LICENSE).

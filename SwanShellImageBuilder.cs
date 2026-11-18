@@ -22,6 +22,9 @@ using System.Windows.Forms;
 
 [assembly: System.Reflection.AssemblyTitle("SwanShell Image Builder")]
 [assembly: System.Reflection.AssemblyProduct("SwanShell Image Builder")]
+[assembly: System.Reflection.AssemblyDescription("Builds the game images for the swanshell / SwanShellDX menu of the nileswan flash cart")]
+[assembly: System.Reflection.AssemblyCompany("mariovirgili")]
+[assembly: System.Reflection.AssemblyCopyright("Copyright (C) 2026 mariovirgili - GPL-3.0")]
 [assembly: System.Reflection.AssemblyVersion("0.1.0.0")]
 [assembly: System.Reflection.AssemblyFileVersion("0.1.0.0")]
 [assembly: System.Reflection.AssemblyInformationalVersion("0.1")]
