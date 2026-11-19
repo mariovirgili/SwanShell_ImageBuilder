@@ -93,6 +93,33 @@ Picked images are saved as PNG in the `_web` subfolder of the image folder
 (`_web\<game>_1.png`, `_web\<game>_thumb.png`) and are then used like any other image.
 Each downloaded image has a delete link in the preview.
 
+## Autopilot (ScreenScraper)
+
+Next to *Search images online…* in the Preview tab, **Autopilot (ScreenScraper)** picks the images
+of the selected game by itself. It is enabled only once the ScreenScraper credentials are saved
+(*Search images online… → ScreenScraper account…*). It looks the game up like the ScreenScraper
+search (ROM checksum, then name), takes the first game found and downloads, preferring the region
+`wor`, then `eu`, `us`, `jp`:
+
+| ScreenScraper media | becomes |
+|---|---|
+| Screenshot (`ss`) | `thumb.bmp` |
+| Title screen (`sstitle`) | `1.bmp` |
+| Fan art (`fanart`) | `2.bmp` |
+| Box texture (`box-texture`) | `3.bmp` |
+| Background (`background`) | `4.bmp` |
+| Cartridge (`support-2D`, else `support-texture`) | `5.bmp` |
+
+The images are saved in `_web` (`<game>_thumb.png`, `<game>_1.png` … `<game>_5.png`) and shown in
+the preview; *Build images* then writes them. A downloaded `<game>_N` image keeps its number
+(`N.bmp`) when that name is free on the card, so a missing media leaves its place to the images of
+your folders. A summary lists what was found and what is missing; if the game already has
+downloaded images in those places, the autopilot asks before replacing them.
+
+The mapping can be changed in `SwanShellImageBuilder.ini` (keys `autopilot_thumb`, `autopilot_1`
+… `autopilot_6`, each a comma-separated list of ScreenScraper media types tried in order; an empty
+value leaves that place unused).
+
 ## Existing images are never overwritten or deleted
 
 - New full-screen images get the first free names (`1.bmp`, `2.bmp`… skipping names in use).

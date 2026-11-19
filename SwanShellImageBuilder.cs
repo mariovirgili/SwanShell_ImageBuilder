@@ -763,8 +763,11 @@ namespace SwanShellImageBuilder
                     else if (fullCount >= MaxShown) it.Skip = "not written: the folder already has " + MaxShown + " images (the menu shows only " + MaxShown + ")";
                     else
                     {
+                        // a downloaded _web\<game>_N image keeps its number (N.bmp) when that name is free,
+                        // so the autopilot layout is kept even if a slot is missing; others take the first free name
                         int n = 1;
-                        while (names.Contains(n + ".bmp")) n++;
+                        if (Matcher.IsWeb(src) && src.Num >= 1 && src.Num <= MaxShown && !names.Contains(src.Num + ".bmp")) n = src.Num;
+                        else while (names.Contains(n + ".bmp")) n++;
                         it.OutName = n + ".bmp";
                         names.Add(it.OutName);
                         newBytes.Add(Tuple.Create(it.OutName, it.Bytes));
@@ -807,6 +810,7 @@ namespace SwanShellImageBuilder
     class WebResult
     {
         public string Title, ImageUrl, ThumbUrl, PageUrl, Source;
+        public string Type, Region, GameId, GameName, How;   // ScreenScraper only
     }
 
     static class Web
@@ -1084,6 +1088,12 @@ namespace SwanShellImageBuilder
             { "fanart", "Fan art" }, { "mixrbv1", "Mix v1" }, { "mixrbv2", "Mix v2" }, { "steamgrid", "Steam grid" }
         };
 
+        public static string TypeLabel(string type)
+        {
+            string label;
+            return TypeNames.TryGetValue(type ?? "", out label) ? label : type;
+        }
+
         static string Auth(SsCreds c)
         {
             string a = "devid=" + Uri.EscapeDataString(c.DevId.Trim()) + "&devpassword=" + Uri.EscapeDataString(c.DevPassword) +
@@ -1256,7 +1266,8 @@ namespace SwanShellImageBuilder
                     Title = label + (string.IsNullOrEmpty(region) ? "" : " [" + region + "]") + " — " + name + " (" + how + ")",
                     ImageUrl = url,
                     ThumbUrl = url + (url.Contains("?") ? "&" : "?") + "maxwidth=320&maxheight=240",
-                    PageUrl = page
+                    PageUrl = page,
+                    Type = type, Region = region, GameId = id ?? name, GameName = name, How = how
                 });
             }
         }
@@ -1814,6 +1825,86 @@ namespace SwanShellImageBuilder
     }
 
     // ------------------------------------------------------------------
+    // Autopilot: picks the images of one game from ScreenScraper by media type and saves them
+    // in _web, in the order the menu will show them. The type list of each slot can be changed
+    // in SwanShellImageBuilder.ini (keys autopilot_thumb, autopilot_1 … autopilot_6).
+    // ------------------------------------------------------------------
+    class AutopilotSlot
+    {
+        public string Key, Label, FileSuffix;
+        public string[] Types;
+    }
+
+    static class Autopilot
+    {
+        static readonly string[] RegionOrder = { "wor", "eu", "us", "jp", "ss" };
+
+        public static List<AutopilotSlot> Slots()
+        {
+            var def = new List<AutopilotSlot>
+            {
+                new AutopilotSlot { Key = "thumb", Label = "Thumbnail", FileSuffix = "thumb", Types = new[] { "ss" } },
+                new AutopilotSlot { Key = "1", Label = "Image 1", FileSuffix = "1", Types = new[] { "sstitle" } },
+                new AutopilotSlot { Key = "2", Label = "Image 2", FileSuffix = "2", Types = new[] { "fanart" } },
+                new AutopilotSlot { Key = "3", Label = "Image 3", FileSuffix = "3", Types = new[] { "box-texture" } },
+                new AutopilotSlot { Key = "4", Label = "Image 4", FileSuffix = "4", Types = new[] { "background" } },
+                new AutopilotSlot { Key = "5", Label = "Image 5", FileSuffix = "5", Types = new[] { "support-2D", "support-texture" } },
+                new AutopilotSlot { Key = "6", Label = "Image 6", FileSuffix = "6", Types = new string[0] },
+            };
+            var s = Settings.Load();
+            foreach (var slot in def)
+            {
+                string v;
+                if (s.TryGetValue("autopilot_" + slot.Key, out v))
+                    slot.Types = v.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            }
+            return def;
+        }
+
+        // Writes the default mapping into the .ini once, so it can be edited there.
+        public static void EnsureDefaultsSaved()
+        {
+            var s = Settings.Load();
+            if (s.ContainsKey("autopilot_thumb")) return;
+            var d = new Dictionary<string, string>();
+            foreach (var slot in Slots()) d["autopilot_" + slot.Key] = string.Join(",", slot.Types);
+            Settings.Save(d);
+        }
+
+        static int RegionRank(string r)
+        {
+            int i = Array.IndexOf(RegionOrder, (r ?? "").ToLowerInvariant());
+            return i < 0 ? RegionOrder.Length : i;
+        }
+
+        public static string Describe(string type)
+        {
+            return ScreenScraper.TypeLabel(type);
+        }
+
+        // For each slot, the best media of the first game found (preferred region, then any).
+        public static List<Tuple<AutopilotSlot, WebResult>> Choose(List<WebResult> media)
+        {
+            var res = new List<Tuple<AutopilotSlot, WebResult>>();
+            if (media.Count == 0) return res;
+            string game = media[0].GameId;
+            var mine = media.Where(m => m.GameId == game).ToList();
+            foreach (var slot in Slots())
+            {
+                WebResult best = null;
+                foreach (var t in slot.Types)
+                {
+                    best = mine.Where(m => string.Equals(m.Type, t, StringComparison.OrdinalIgnoreCase))
+                               .OrderBy(m => RegionRank(m.Region)).FirstOrDefault();
+                    if (best != null) break;
+                }
+                res.Add(Tuple.Create(slot, best));
+            }
+            return res;
+        }
+    }
+
+    // ------------------------------------------------------------------
     // Options snapshot used by the build and the preview
     // ------------------------------------------------------------------
     class RunOptions
@@ -1832,7 +1923,8 @@ namespace SwanShellImageBuilder
         CheckBox chkRomSub, chkImgSub, chkOnePerSub, chkStruct, chkDither, chkFuzzy, chkCovers, chkThumb, chkSkipNoImg;
         ComboBox cmbFull, cmbThumb, cmbThumbSub, cmbZoom;
         NumericUpDown numMax;
-        Button btnPreview, btnRun, btnOpen, btnCancel, btnWeb;
+        Button btnPreview, btnRun, btnOpen, btnCancel, btnWeb, btnAuto;
+        bool autopilotRunning;
         ProgressBar progress;
         Label lblStatus, lblPreviewInfo;
         TabControl tabs;
@@ -1972,7 +2064,8 @@ namespace SwanShellImageBuilder
             tabPreview.Controls.Add(split);
             lstGames = new ListBox { Dock = DockStyle.Fill, IntegralHeight = false, HorizontalScrollbar = true };
             split.Panel1.Controls.Add(lstGames);
-            var head = new TableLayoutPanel { Dock = DockStyle.Top, ColumnCount = 2, AutoSize = true, Padding = new Padding(4, 2, 4, 2) };
+            var head = new TableLayoutPanel { Dock = DockStyle.Top, ColumnCount = 3, AutoSize = true, Padding = new Padding(4, 2, 4, 2) };
+            head.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             head.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             head.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             btnWeb = new Button { Text = "Search images online…", AutoSize = true, Enabled = false };
@@ -1981,7 +2074,11 @@ namespace SwanShellImageBuilder
                 AutoSize = true, Padding = new Padding(6, 6, 6, 0), MaximumSize = new Size(700, 0),
                 Text = "Click \"Preview\" to list the games, then select one to see its images exactly as they will be written (16 colours)."
             };
-            head.Controls.Add(btnWeb, 0, 0); head.Controls.Add(lblPreviewInfo, 1, 0);
+            btnAuto = new Button { Text = "Autopilot (ScreenScraper)", AutoSize = true, Enabled = false };
+            new ToolTip().SetToolTip(btnAuto,
+                "Downloads from ScreenScraper, for the selected game: screenshot → thumbnail, title screen → 1, fan art → 2, " +
+                "box texture → 3, background → 4, cartridge → 5.\nNeeds the ScreenScraper credentials (set them in Search images online…).");
+            head.Controls.Add(btnWeb, 0, 0); head.Controls.Add(btnAuto, 1, 0); head.Controls.Add(lblPreviewInfo, 2, 0);
             pnlImages = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoScroll = true, Padding = new Padding(6), BackColor = Color.FromArgb(48, 48, 48) };
             split.Panel2.Controls.Add(pnlImages);
             split.Panel2.Controls.Add(head);
@@ -2009,9 +2106,10 @@ namespace SwanShellImageBuilder
                 if (Directory.Exists(d)) System.Diagnostics.Process.Start("explorer.exe", "\"" + d + "\"");
                 else if (Directory.Exists(txtOut.Text)) System.Diagnostics.Process.Start("explorer.exe", "\"" + txtOut.Text + "\"");
             };
-            lstGames.SelectedIndexChanged += delegate { btnWeb.Enabled = lstGames.SelectedIndex >= 0; ShowPreview(); };
+            lstGames.SelectedIndexChanged += delegate { UpdateGameButtons(); ShowPreview(); };
             lstGames.DoubleClick += delegate { OpenWebPicker(); };
             btnWeb.Click += delegate { OpenWebPicker(); };
+            btnAuto.Click += delegate { RunAutopilot(); };
             txtImg.TextChanged += delegate { RefreshThumbSubs(null); };
 
             // changing a conversion option refreshes the preview of the selected game
@@ -2027,6 +2125,7 @@ namespace SwanShellImageBuilder
             loading = true;
             LoadSettings();
             loading = false;
+            Autopilot.EnsureDefaultsSaved();
             FormClosing += delegate { cancel = true; previewGen++; SaveSettings(); };
             RestoreWindow();
 
@@ -2215,7 +2314,103 @@ namespace SwanShellImageBuilder
                 dlg.ShowDialog(this);
                 changed = dlg.Changed;
             }
+            UpdateGameButtons();   // credentials may have been entered in the search window
             if (changed) RematchSelected();
+        }
+
+        // "Search images online…" needs a selected game; Autopilot also needs saved ScreenScraper credentials.
+        void UpdateGameButtons()
+        {
+            bool sel = lstGames.SelectedIndex >= 0 && lstGames.SelectedIndex < jobs.Count;
+            btnWeb.Enabled = sel && !autopilotRunning;
+            btnAuto.Enabled = sel && !autopilotRunning && SsCreds.Load().HasDev;
+        }
+
+        void RunAutopilot()
+        {
+            int i = lstGames.SelectedIndex;
+            if (i < 0 || i >= jobs.Count) return;
+            var job = jobs[i];
+            string imgDir = txtImg.Text.Trim();
+            if (!Directory.Exists(imgDir)) { MessageBox.Show(this, "Please select a valid image folder first: the images are saved in its \"" + Matcher.WebDir + "\" subfolder.", Text); return; }
+            var creds = SsCreds.Load();
+            if (!creds.HasDev) { UpdateGameButtons(); return; }
+
+            string webDir = Path.Combine(imgDir, Matcher.WebDir);
+            var slots = Autopilot.Slots().Where(sl => sl.Types.Length > 0).ToList();
+            var existing = slots.Select(sl => Path.Combine(webDir, job.Folder + "_" + sl.FileSuffix + ".png")).Where(File.Exists).ToList();
+            if (existing.Count > 0 &&
+                MessageBox.Show(this, "This game already has downloaded images that the autopilot would replace:\n\n" +
+                    string.Join("\n", existing.Select(Path.GetFileName)) + "\n\nReplace them?", Text,
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
+
+            autopilotRunning = true;
+            UpdateGameButtons();
+            string romPath = job.RomPath, game = job.Folder;
+            Action<string> status = t =>
+            {
+                try { BeginInvoke(new Action(() => { if (!IsDisposed) lblPreviewInfo.Text = "Autopilot: " + t; })); } catch { }
+            };
+            new Thread(() =>
+            {
+                var report = new List<string>();
+                string error = null;
+                int saved = 0;
+                try
+                {
+                    var media = ScreenScraper.Search(creds, romPath, game, ScreenScraper.CleanName(game), status);
+                    if (media.Count == 0) error = "the game was not found on ScreenScraper (checksum and name).";
+                    else
+                    {
+                        report.Add("Game: " + media[0].GameName + "  (" + media[0].How + ")");
+                        report.Add("");
+                        Directory.CreateDirectory(webDir);
+                        foreach (var pick in Autopilot.Choose(media))
+                        {
+                            var slot = pick.Item1; var m = pick.Item2;
+                            string target = slot.FileSuffix == "thumb" ? "thumbnail" : "image " + slot.FileSuffix;
+                            if (slot.Types.Length == 0) continue;
+                            if (m == null)
+                            {
+                                report.Add(target + ": no " + string.Join(" / ", slot.Types.Select(Autopilot.Describe)) + " for this game");
+                                continue;
+                            }
+                            status("downloading " + Autopilot.Describe(m.Type) + " for " + target + "…");
+                            try
+                            {
+                                using (var b = WsBmp.LoadBytes(Web.Get(m.ImageUrl, 30000, null)))
+                                    b.Save(Path.Combine(webDir, game + "_" + slot.FileSuffix + ".png"), ImageFormat.Png);
+                                saved++;
+                                report.Add(target + " ← " + Autopilot.Describe(m.Type) + (string.IsNullOrEmpty(m.Region) ? "" : " [" + m.Region + "]"));
+                            }
+                            catch (Exception ex) { report.Add(target + ": download failed (" + ex.Message + ")"); }
+                        }
+                    }
+                }
+                catch (Exception ex) { error = ex.Message; }
+                try
+                {
+                    BeginInvoke(new Action(() =>
+                    {
+                        if (IsDisposed) return;
+                        autopilotRunning = false;
+                        UpdateGameButtons();
+                        if (saved > 0) RematchSelected();
+                        if (error != null)
+                        {
+                            lblPreviewInfo.Text = "Autopilot: " + error;
+                            MessageBox.Show(this, "Autopilot for " + game + ":\n\n" + error, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        }
+                        else
+                        {
+                            lblPreviewInfo.Text = "Autopilot: " + saved + " image(s) saved for " + game + ". Data and media courtesy of ScreenScraper.fr";
+                            MessageBox.Show(this, "Autopilot for " + game + ":\n\n" + string.Join("\n", report) +
+                                "\n\nSaved in " + webDir + ". Check the preview, then use Build images.", Text);
+                        }
+                    }));
+                }
+                catch { }
+            }) { IsBackground = true }.Start();
         }
 
         // Re-matches only the selected game (after images were added or removed) and refreshes its preview.
