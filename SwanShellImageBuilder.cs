@@ -1849,8 +1849,8 @@ namespace SwanShellImageBuilder
                 new AutopilotSlot { Key = "2", Label = "Image 2", FileSuffix = "2", Types = new[] { "fanart" } },
                 new AutopilotSlot { Key = "3", Label = "Image 3", FileSuffix = "3", Types = new[] { "box-texture" } },
                 new AutopilotSlot { Key = "4", Label = "Image 4", FileSuffix = "4", Types = new[] { "background" } },
-                new AutopilotSlot { Key = "5", Label = "Image 5", FileSuffix = "5", Types = new[] { "support-2D", "support-texture" } },
-                new AutopilotSlot { Key = "6", Label = "Image 6", FileSuffix = "6", Types = new string[0] },
+                new AutopilotSlot { Key = "5", Label = "Image 5", FileSuffix = "5", Types = new[] { "ss" } },
+                new AutopilotSlot { Key = "6", Label = "Image 6", FileSuffix = "6", Types = new[] { "support-2D", "support-texture" } },
             };
             var s = Settings.Load();
             foreach (var slot in def)
@@ -1866,9 +1866,25 @@ namespace SwanShellImageBuilder
         public static void EnsureDefaultsSaved()
         {
             var s = Settings.Load();
+            string v5, v6, ver;
+            // 0.1.2 saved cartridge in 5 and nothing in 6: move to the new layout once, unless the user changed them
+            if (s.ContainsKey("autopilot_thumb") && !s.TryGetValue("autopilot_map", out ver))
+            {
+                var d2 = new Dictionary<string, string>();
+                if (s.TryGetValue("autopilot_5", out v5) && v5 == "support-2D,support-texture" &&
+                    (!s.TryGetValue("autopilot_6", out v6) || v6.Trim() == ""))
+                {
+                    d2["autopilot_5"] = "ss";
+                    d2["autopilot_6"] = "support-2D,support-texture";
+                }
+                d2["autopilot_map"] = "2";
+                Settings.Save(d2);
+                return;
+            }
             if (s.ContainsKey("autopilot_thumb")) return;
             var d = new Dictionary<string, string>();
             foreach (var slot in Slots()) d["autopilot_" + slot.Key] = string.Join(",", slot.Types);
+            d["autopilot_map"] = "2";
             Settings.Save(d);
         }
 
@@ -1939,6 +1955,9 @@ namespace SwanShellImageBuilder
         TabControl tabs;
         TabPage tabLog, tabPreview;
         ListBox lstGames;
+        int currentIdx = -1, clickedIdx = -1;      // the game shown in the preview (several can be selected)
+        List<int> prevSelected = new List<int>();
+        bool settingList;
         FlowLayoutPanel pnlImages;
         volatile bool cancel;
         Thread worker;
@@ -2071,7 +2090,7 @@ namespace SwanShellImageBuilder
 
             var split = new SplitContainer { Dock = DockStyle.Fill, FixedPanel = FixedPanel.Panel1 };
             tabPreview.Controls.Add(split);
-            lstGames = new ListBox { Dock = DockStyle.Fill, IntegralHeight = false, HorizontalScrollbar = true };
+            lstGames = new ListBox { Dock = DockStyle.Fill, IntegralHeight = false, HorizontalScrollbar = true, SelectionMode = SelectionMode.MultiExtended };
             split.Panel1.Controls.Add(lstGames);
             var head = new TableLayoutPanel { Dock = DockStyle.Top, ColumnCount = 3, AutoSize = true, Padding = new Padding(4, 2, 4, 2) };
             head.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -2086,7 +2105,7 @@ namespace SwanShellImageBuilder
             btnAuto = new Button { Text = "Autopilot (ScreenScraper)", AutoSize = true, Enabled = false };
             new ToolTip().SetToolTip(btnAuto,
                 "Downloads from ScreenScraper, for the selected game: screenshot → thumbnail, title screen → 1, fan art → 2, " +
-                "box texture → 3, background → 4, cartridge → 5.\nNeeds the ScreenScraper credentials (set them in Search images online…).");
+                "box texture → 3, background → 4, screenshot → 5, cartridge → 6.\nSelect several games (Ctrl/Shift+click, Ctrl+A) to run it on all of them.\nNeeds the ScreenScraper credentials (set them in Search images online…).");
             head.Controls.Add(btnWeb, 0, 0); head.Controls.Add(btnAuto, 1, 0); head.Controls.Add(lblPreviewInfo, 2, 0);
             pnlImages = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoScroll = true, Padding = new Padding(6), BackColor = Color.FromArgb(48, 48, 48) };
             split.Panel2.Controls.Add(pnlImages);
@@ -2115,7 +2134,31 @@ namespace SwanShellImageBuilder
                 if (Directory.Exists(d)) System.Diagnostics.Process.Start("explorer.exe", "\"" + d + "\"");
                 else if (Directory.Exists(txtOut.Text)) System.Diagnostics.Process.Start("explorer.exe", "\"" + txtOut.Text + "\"");
             };
-            lstGames.SelectedIndexChanged += delegate { UpdateGameButtons(); ShowPreview(); };
+            lstGames.MouseDown += (o, e) => { clickedIdx = lstGames.IndexFromPoint(e.Location); };
+            lstGames.KeyDown += (o, e) =>
+            {
+                if (e.Control && e.KeyCode == Keys.A)
+                {
+                    e.SuppressKeyPress = true;
+                    lstGames.BeginUpdate();
+                    for (int k = 0; k < lstGames.Items.Count; k++) lstGames.SetSelected(k, true);
+                    lstGames.EndUpdate();
+                }
+            };
+            lstGames.SelectedIndexChanged += delegate
+            {
+                if (settingList) return;
+                var sel = lstGames.SelectedIndices.Cast<int>().ToList();
+                var added = sel.Except(prevSelected).ToList();
+                int cur = currentIdx;
+                if (clickedIdx >= 0 && sel.Contains(clickedIdx)) cur = clickedIdx;
+                else if (added.Count == 1) cur = added[0];
+                else if (!sel.Contains(cur)) cur = sel.Count > 0 ? sel[0] : -1;
+                clickedIdx = -1;
+                prevSelected = sel;
+                UpdateGameButtons();
+                if (cur != currentIdx) { currentIdx = cur; ShowPreview(); }
+            };
             lstGames.DoubleClick += delegate { OpenWebPicker(); };
             btnWeb.Click += delegate { OpenWebPicker(); };
             btnAuto.Click += delegate { RunAutopilot(); };
@@ -2289,12 +2332,15 @@ namespace SwanShellImageBuilder
         {
             if (IsDisposed) return;
             if (InvokeRequired) { try { BeginInvoke(new Action<List<GameJob>>(SetJobs), list); } catch { } return; }
-            string prev = lstGames.SelectedIndex >= 0 && lstGames.SelectedIndex < jobs.Count ? jobs[lstGames.SelectedIndex].Folder : null;
+            string prev = currentIdx >= 0 && currentIdx < jobs.Count ? jobs[currentIdx].Folder : null;
             jobs = list;
+            settingList = true;
             lstGames.BeginUpdate();
             lstGames.Items.Clear();
             foreach (var j in list) lstGames.Items.Add(ItemText(j));
             lstGames.EndUpdate();
+            settingList = false;
+            currentIdx = -1; prevSelected = new List<int>();
             int with = list.Count(j => j.Full.Count > 0 || j.Thumb != null);
             int onlyCard = list.Count(j => j.Full.Count == 0 && j.Thumb == null && j.OnCard.Count > 0);
             lblPreviewInfo.Text = list.Count + " games, " + with + " with images, " + (list.Count - with) +
@@ -2302,9 +2348,8 @@ namespace SwanShellImageBuilder
                                   ".  ≈ = loose match,  – = no new images.  Select a game to see its images.";
             int sel = prev == null ? -1 : list.FindIndex(j => j.Folder == prev);
             if (sel < 0) sel = list.FindIndex(j => j.Full.Count > 0 || j.Thumb != null);
-            if (sel >= 0 && sel == lstGames.SelectedIndex) ShowPreview();
-            else if (sel >= 0) lstGames.SelectedIndex = sel;
-            else ClearImages();
+            if (sel >= 0) lstGames.SetSelected(sel, true);
+            else { ClearImages(); UpdateGameButtons(); }
         }
 
         static string ItemText(GameJob j)
@@ -2316,7 +2361,7 @@ namespace SwanShellImageBuilder
 
         void OpenWebPicker()
         {
-            int i = lstGames.SelectedIndex;
+            int i = currentIdx;
             if (i < 0 || i >= jobs.Count) return;
             string imgDir = txtImg.Text.Trim();
             if (!Directory.Exists(imgDir)) { MessageBox.Show(this, "Please select a valid image folder first: picked images are saved in its \"" + Matcher.WebDir + "\" subfolder.", Text); return; }
@@ -2333,16 +2378,19 @@ namespace SwanShellImageBuilder
         // "Search images online…" needs a selected game; Autopilot also needs saved ScreenScraper credentials.
         void UpdateGameButtons()
         {
-            bool sel = lstGames.SelectedIndex >= 0 && lstGames.SelectedIndex < jobs.Count;
+            bool sel = currentIdx >= 0 && currentIdx < jobs.Count;
+            int many = lstGames.SelectedIndices.Count;
             btnWeb.Enabled = sel && !autopilotRunning;
-            btnAuto.Enabled = sel && !autopilotRunning && SsCreds.Load().HasDev;
+            btnAuto.Enabled = many > 0 && !autopilotRunning && SsCreds.Load().HasDev;
+            btnAuto.Text = many > 1 ? "Autopilot (" + many + " games)" : "Autopilot (ScreenScraper)";
         }
 
+        // Autopilot on every selected game (one game: detailed summary; several: one confirmation,
+        // progress, Cancel, per-game report in the Log tab).
         void RunAutopilot()
         {
-            int i = lstGames.SelectedIndex;
-            if (i < 0 || i >= jobs.Count) return;
-            var job = jobs[i];
+            var idxs = lstGames.SelectedIndices.Cast<int>().Where(x => x >= 0 && x < jobs.Count).OrderBy(x => x).ToList();
+            if (idxs.Count == 0) return;
             string imgDir = txtImg.Text.Trim();
             if (!Directory.Exists(imgDir)) { MessageBox.Show(this, "Please select a valid image folder first: the images are saved in its \"" + Matcher.WebDir + "\" subfolder.", Text); return; }
             var creds = SsCreds.Load();
@@ -2350,74 +2398,119 @@ namespace SwanShellImageBuilder
 
             string webDir = Path.Combine(imgDir, Matcher.WebDir);
             var slots = Autopilot.Slots().Where(sl => sl.Types.Length > 0).ToList();
-            var existing = slots.Select(sl => Path.Combine(webDir, job.Folder + "_" + sl.FileSuffix + ".png")).Where(File.Exists).ToList();
-            if (existing.Count > 0 &&
-                MessageBox.Show(this, "This game already has downloaded images that the autopilot would replace:\n\n" +
-                    string.Join("\n", existing.Select(Path.GetFileName)) + "\n\nReplace them?", Text,
-                    MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
+            Func<GameJob, List<string>> existingOf = j => slots
+                .Select(sl => Path.Combine(webDir, j.Folder + "_" + sl.FileSuffix + ".png")).Where(File.Exists).ToList();
+
+            var targets = idxs.Select(x => jobs[x]).ToList();
+            bool single = targets.Count == 1;
+            var skip = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (single)
+            {
+                var existing = existingOf(targets[0]);
+                if (existing.Count > 0 &&
+                    MessageBox.Show(this, "This game already has downloaded images that the autopilot would replace:\n\n" +
+                        string.Join("\n", existing.Select(Path.GetFileName)) + "\n\nReplace them?", Text,
+                        MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
+            }
+            else
+            {
+                var done = targets.Where(j => existingOf(j).Count > 0).ToList();
+                string msg = "Run the autopilot on " + targets.Count + " games?\n\n" +
+                             "For each game it downloads up to " + slots.Count + " images from ScreenScraper, one request at a time, " +
+                             "so it can take a while. You can stop it with Cancel.";
+                if (done.Count > 0)
+                {
+                    var r = MessageBox.Show(this, msg + "\n\n" + done.Count + " of these games already have downloaded images in the autopilot places.\n\n" +
+                        "Yes = replace them\nNo = skip those games\nCancel = do nothing", Text,
+                        MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
+                    if (r == DialogResult.Cancel) return;
+                    if (r == DialogResult.No) foreach (var j in done) skip.Add(j.Folder);
+                }
+                else if (MessageBox.Show(this, msg, Text, MessageBoxButtons.OKCancel, MessageBoxIcon.Question) != DialogResult.OK) return;
+                txtLog.Clear();
+                tabs.SelectedTab = tabLog;
+            }
 
             autopilotRunning = true;
+            cancel = false;
+            SetBusy(true);
             UpdateGameButtons();
-            string romPath = job.RomPath, game = job.Folder;
             Action<string> status = t =>
             {
                 try { BeginInvoke(new Action(() => { if (!IsDisposed) lblPreviewInfo.Text = "Autopilot: " + t; })); } catch { }
             };
+
             new Thread(() =>
             {
                 var report = new List<string>();
-                string error = null;
-                int saved = 0;
-                try
+                string fatal = null;
+                int gamesOk = 0, notFound = 0, failed = 0, skipped = 0, savedTotal = 0;
+                for (int k = 0; k < targets.Count && !cancel; k++)
                 {
-                    var media = ScreenScraper.Search(creds, romPath, game, ScreenScraper.CleanName(game), status);
-                    if (media.Count == 0) error = "the game was not found on ScreenScraper (checksum and name).";
+                    var job = targets[k];
+                    string prefix = single ? "" : (k + 1) + "/" + targets.Count + " " + job.Folder + ": ";
+                    SetProgress(k, targets.Count, single ? "Autopilot…" : "Autopilot " + (k + 1) + " / " + targets.Count);
+                    if (skip.Contains(job.Folder))
+                    {
+                        skipped++;
+                        if (!single) Log("= " + job.Folder + "  : skipped (already has downloaded images)");
+                        continue;
+                    }
+                    var lines = new List<string>();
+                    int saved;
+                    string error = AutopilotOne(creds, job, webDir, lines, t => status(prefix + t), out saved);
+                    savedTotal += saved;
+                    if (error == null) gamesOk++;
+                    else if (error == NotFound) notFound++;
                     else
                     {
-                        report.Add("Game: " + media[0].GameName + "  (" + media[0].How + ")");
-                        report.Add("");
-                        Directory.CreateDirectory(webDir);
-                        foreach (var pick in Autopilot.Choose(media))
-                        {
-                            var slot = pick.Item1; var m = pick.Item2;
-                            string target = slot.FileSuffix == "thumb" ? "thumbnail" : "image " + slot.FileSuffix;
-                            if (slot.Types.Length == 0) continue;
-                            if (m == null)
-                            {
-                                report.Add(target + ": no " + string.Join(" / ", slot.Types.Select(Autopilot.Describe)) + " for this game");
-                                continue;
-                            }
-                            status("downloading " + Autopilot.Describe(m.Type) + " for " + target + "…");
-                            try
-                            {
-                                using (var b = WsBmp.LoadBytes(Web.Get(m.ImageUrl, 30000, null)))
-                                    b.Save(Path.Combine(webDir, game + "_" + slot.FileSuffix + ".png"), ImageFormat.Png);
-                                saved++;
-                                report.Add(target + " ← " + Autopilot.Describe(m.Type) + (string.IsNullOrEmpty(m.Region) ? "" : " [" + m.Region + "]"));
-                            }
-                            catch (Exception ex) { report.Add(target + ": download failed (" + ex.Message + ")"); }
-                        }
+                        failed++;
+                        if (IsFatal(error)) fatal = error;
                     }
+                    if (single) { report = lines; if (error != null) report.Insert(0, error == NotFound ? "The game was not found on ScreenScraper (checksum and name)." : error); }
+                    else
+                    {
+                        Log((error == null ? "+ " : "- ") + job.Folder + (error == null ? "" : "  : " + (error == NotFound ? "not found on ScreenScraper" : error)));
+                        foreach (var l in lines) Log("     " + l);
+                    }
+                    if (fatal != null) break;
                 }
-                catch (Exception ex) { error = ex.Message; }
+                SetProgress(targets.Count, targets.Count, cancel ? "Cancelled" : (fatal != null ? "Stopped" : "Done"));
+                if (!single)
+                {
+                    Log("");
+                    if (cancel) Log("Cancelled.");
+                    if (fatal != null) Log("Stopped: " + fatal);
+                    Log("Autopilot: " + gamesOk + " games with images, " + notFound + " not found, " + failed + " errors, " +
+                        skipped + " skipped; " + savedTotal + " images saved in " + webDir + ". Data and media courtesy of ScreenScraper.fr");
+                }
                 try
                 {
                     BeginInvoke(new Action(() =>
                     {
                         if (IsDisposed) return;
                         autopilotRunning = false;
+                        SetBusy(false);
+                        RematchJobs(targets.Select(j => j.Folder).ToList());
                         UpdateGameButtons();
-                        if (saved > 0) RematchSelected();
-                        if (error != null)
+                        if (single)
                         {
-                            lblPreviewInfo.Text = "Autopilot: " + error;
-                            MessageBox.Show(this, "Autopilot for " + game + ":\n\n" + error, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            bool ok = gamesOk > 0;
+                            lblPreviewInfo.Text = ok ? "Autopilot: " + savedTotal + " image(s) saved for " + targets[0].Folder + ". Data and media courtesy of ScreenScraper.fr"
+                                                     : "Autopilot: " + (report.Count > 0 ? report[0] : "failed");
+                            MessageBox.Show(this, "Autopilot for " + targets[0].Folder + ":\n\n" + string.Join("\n", report) +
+                                (ok ? "\n\nSaved in " + webDir + ". Check the preview, then use Build images." : ""), Text,
+                                MessageBoxButtons.OK, ok ? MessageBoxIcon.None : MessageBoxIcon.Warning);
                         }
                         else
                         {
-                            lblPreviewInfo.Text = "Autopilot: " + saved + " image(s) saved for " + game + ". Data and media courtesy of ScreenScraper.fr";
-                            MessageBox.Show(this, "Autopilot for " + game + ":\n\n" + string.Join("\n", report) +
-                                "\n\nSaved in " + webDir + ". Check the preview, then use Build images.", Text);
+                            lblPreviewInfo.Text = "Autopilot: " + gamesOk + " of " + targets.Count + " games done. Details in the Log tab.";
+                            MessageBox.Show(this, "Autopilot finished" + (cancel ? " (cancelled)" : "") + ".\n\n" +
+                                gamesOk + " games with images\n" + notFound + " not found on ScreenScraper\n" + failed + " errors\n" +
+                                skipped + " skipped\n" + savedTotal + " images saved" +
+                                (fatal != null ? "\n\nStopped: " + fatal : "") +
+                                "\n\nDetails in the Log tab. Check the preview, then use Build images.", Text,
+                                MessageBoxButtons.OK, fatal != null ? MessageBoxIcon.Warning : MessageBoxIcon.None);
                         }
                     }));
                 }
@@ -2425,10 +2518,81 @@ namespace SwanShellImageBuilder
             }) { IsBackground = true }.Start();
         }
 
+        const string NotFound = "\u0001notfound";
+
+        // Errors that make every following request fail as well: stop the batch.
+        static bool IsFatal(string e)
+        {
+            e = e.ToLowerInvariant();
+            return e.Contains("login refused") || e.Contains("quota") || e.Contains("closed") || e.Contains("blacklisted");
+        }
+
+        // Downloads the autopilot images of one game. Returns null on success, NotFound, or an error message.
+        static string AutopilotOne(SsCreds creds, GameJob job, string webDir, List<string> report, Action<string> status, out int saved)
+        {
+            saved = 0;
+            List<WebResult> media;
+            try { media = ScreenScraper.Search(creds, job.RomPath, job.Folder, ScreenScraper.CleanName(job.Folder), status); }
+            catch (Exception ex) { return ex.Message; }
+            if (media.Count == 0) return NotFound;
+            report.Add("Game: " + media[0].GameName + "  (" + media[0].How + ")");
+            Directory.CreateDirectory(webDir);
+            var cache = new Dictionary<string, byte[]>();   // the same media can fill two places (e.g. screenshot)
+            foreach (var pick in Autopilot.Choose(media))
+            {
+                var slot = pick.Item1; var m = pick.Item2;
+                if (slot.Types.Length == 0) continue;
+                string target = slot.FileSuffix == "thumb" ? "thumbnail" : "image " + slot.FileSuffix;
+                if (m == null)
+                {
+                    report.Add(target + ": no " + string.Join(" / ", slot.Types.Select(Autopilot.Describe)) + " for this game");
+                    continue;
+                }
+                status("downloading " + Autopilot.Describe(m.Type) + " for " + target + "…");
+                try
+                {
+                    byte[] data;
+                    if (!cache.TryGetValue(m.ImageUrl, out data)) cache[m.ImageUrl] = data = Web.Get(m.ImageUrl, 30000, null);
+                    using (var b = WsBmp.LoadBytes(data))
+                        b.Save(Path.Combine(webDir, job.Folder + "_" + slot.FileSuffix + ".png"), ImageFormat.Png);
+                    saved++;
+                    report.Add(target + " ← " + Autopilot.Describe(m.Type) + (string.IsNullOrEmpty(m.Region) ? "" : " [" + m.Region + "]"));
+                }
+                catch (Exception ex) { report.Add(target + ": download failed (" + ex.Message + ")"); }
+            }
+            return null;
+        }
+
+        // Re-matches the given games after their images changed and refreshes the list and the preview.
+        void RematchJobs(List<string> folders)
+        {
+            var o = GetOptions(true);
+            try
+            {
+                var images = Matcher.IndexImages(o.ImgDir, o.ImgSub);
+                var set = new HashSet<string>(folders, StringComparer.OrdinalIgnoreCase);
+                for (int i = 0; i < jobs.Count; i++)
+                {
+                    if (!set.Contains(jobs[i].Folder)) continue;
+                    var nj = Matcher.Match(jobs[i].RomPath, images, o.Fuzzy, o.Covers, o.MaxFull, o.OnePerSub, o.ThumbSub);
+                    if (!o.MakeThumb) nj.Thumb = null;
+                    nj.OnCard = jobs[i].OnCard;
+                    jobs[i] = nj;
+                    settingList = true;
+                    bool sel = lstGames.GetSelected(i);
+                    lstGames.Items[i] = ItemText(nj);
+                    if (sel) lstGames.SetSelected(i, true);
+                    settingList = false;
+                }
+            }
+            catch (Exception ex) { MessageBox.Show(this, ex.Message, Text); }
+            ShowPreview();
+        }
+
         // Re-matches only the selected game (after images were added or removed) and refreshes its preview.
         void RematchSelected()
         {
-            int i = lstGames.SelectedIndex;
+            int i = currentIdx;
             if (i < 0 || i >= jobs.Count) return;
             var o = GetOptions(true);
             try
@@ -2436,8 +2600,13 @@ namespace SwanShellImageBuilder
                 var images = Matcher.IndexImages(o.ImgDir, o.ImgSub);
                 var nj = Matcher.Match(jobs[i].RomPath, images, o.Fuzzy, o.Covers, o.MaxFull, o.OnePerSub, o.ThumbSub);
                 if (!o.MakeThumb) nj.Thumb = null;
+                nj.OnCard = jobs[i].OnCard;
                 jobs[i] = nj;
+                settingList = true;
+                bool wasSel = lstGames.GetSelected(i);
                 lstGames.Items[i] = ItemText(nj);
+                if (wasSel) lstGames.SetSelected(i, true);
+                settingList = false;
             }
             catch (Exception ex) { MessageBox.Show(this, ex.Message, Text); }
             ShowPreview();
@@ -2471,7 +2640,7 @@ namespace SwanShellImageBuilder
         {
             int gen = ++previewGen;
             ClearImages();
-            int i = lstGames.SelectedIndex;
+            int i = currentIdx;
             if (i < 0 || i >= jobs.Count) return;
             var job = jobs[i];
             var o = GetOptions(true);

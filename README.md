@@ -96,7 +96,10 @@ Each downloaded image has a delete link in the preview.
 ## Autopilot (ScreenScraper)
 
 Next to *Search images online…* in the Preview tab, **Autopilot (ScreenScraper)** picks the images
-of the selected game by itself. It is enabled only once the ScreenScraper credentials are saved
+of the selected games by itself. Select one game, or several with Ctrl+click / Shift+click
+(Ctrl+A selects all): with several games it asks once, works through them one at a time with a
+progress bar and *Cancel*, writes a per-game report in the *Log* tab and stops by itself on login
+or quota errors. It is enabled only once the ScreenScraper credentials are saved
 (*Search images online… → ScreenScraper account…*). It looks the game up like the ScreenScraper
 search (ROM checksum, then name), takes the first game found and downloads, preferring the region
 `wor`, then `eu`, `us`, `jp`:
@@ -108,13 +111,15 @@ search (ROM checksum, then name), takes the first game found and downloads, pref
 | Fan art (`fanart`) | `2.bmp` |
 | Box texture (`box-texture`) | `3.bmp` |
 | Background (`background`) | `4.bmp` |
-| Cartridge (`support-2D`, else `support-texture`) | `5.bmp` |
+| Screenshot (`ss`) | `5.bmp` |
+| Cartridge (`support-2D`, else `support-texture`) | `6.bmp` |
 
-The images are saved in `_web` (`<game>_thumb.png`, `<game>_1.png` … `<game>_5.png`) and shown in
+The images are saved in `_web` (`<game>_thumb.png`, `<game>_1.png` … `<game>_6.png`) and shown in
 the preview; *Build images* then writes them. A downloaded `<game>_N` image keeps its number
 (`N.bmp`) when that name is free on the card, so a missing media leaves its place to the images of
 your folders. A summary lists what was found and what is missing; if the game already has
-downloaded images in those places, the autopilot asks before replacing them.
+downloaded images in those places, the autopilot asks before replacing them (with several games:
+replace, or skip the games already done).
 
 The mapping can be changed in `SwanShellImageBuilder.ini` (keys `autopilot_thumb`, `autopilot_1`
 … `autopilot_6`, each a comma-separated list of ScreenScraper media types tried in order; an empty
