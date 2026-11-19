@@ -444,6 +444,7 @@ namespace SwanShellImageBuilder
         public List<ImgFile> Full = new List<ImgFile>();
         public ImgFile Thumb;
         public bool Fuzzy;
+        public List<string> OnCard = new List<string>();   // .bmp files already in its folder on the card
     }
 
     static class Matcher
@@ -1085,7 +1086,7 @@ namespace SwanShellImageBuilder
             { "box-2D-side", "Box side" }, { "box-3D", "Box 3D" }, { "box-texture", "Box texture" }, { "support-2D", "Cartridge" },
             { "support-texture", "Cartridge texture" }, { "wheel", "Logo" }, { "wheel-hd", "Logo HD" }, { "wheel-carbon", "Logo carbon" },
             { "wheel-steel", "Logo steel" }, { "screenmarquee", "Marquee" }, { "screenmarqueesmall", "Marquee small" },
-            { "fanart", "Fan art" }, { "mixrbv1", "Mix v1" }, { "mixrbv2", "Mix v2" }, { "steamgrid", "Steam grid" }
+            { "fanart", "Fan art" }, { "background", "Background" }, { "mixrbv1", "Mix v1" }, { "mixrbv2", "Mix v2" }, { "steamgrid", "Steam grid" }
         };
 
         public static string TypeLabel(string type)
@@ -1299,7 +1300,7 @@ namespace SwanShellImageBuilder
                        "Your user account is optional but raises the number of requests you can make per day."
             };
             t.Controls.Add(intro, 0, 0); t.SetColumnSpan(intro, 2);
-            var link = new LinkLabel { Text = "Open the ScreenScraper developer forum", AutoSize = true, Padding = new Padding(0, 0, 0, 8) };
+            var link = new LinkLabel { UseMnemonic = false, Text = "Open the ScreenScraper developer forum", AutoSize = true, Padding = new Padding(0, 0, 0, 8) };
             link.LinkClicked += delegate { try { System.Diagnostics.Process.Start(ScreenScraper.DevAccountPage); } catch { } };
             t.Controls.Add(link, 0, 1); t.SetColumnSpan(link, 2);
 
@@ -1333,7 +1334,7 @@ namespace SwanShellImageBuilder
 
         static TextBox Row(TableLayoutPanel t, int row, string label, string value, bool password)
         {
-            t.Controls.Add(new Label { Text = label, AutoSize = true, Padding = new Padding(0, 6, 6, 0) }, 0, row);
+            t.Controls.Add(new Label { UseMnemonic = false, Text = label, AutoSize = true, Padding = new Padding(0, 6, 6, 0) }, 0, row);
             var tb = new TextBox { Width = 260, Text = value ?? "", UseSystemPasswordChar = password };
             t.Controls.Add(tb, 1, row);
             return tb;
@@ -1379,7 +1380,7 @@ namespace SwanShellImageBuilder
             Controls.Add(root);
 
             var bar = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Dock = DockStyle.Fill, WrapContents = true };
-            bar.Controls.Add(new Label { Text = "Search:", AutoSize = true, Padding = new Padding(0, 7, 0, 0) });
+            bar.Controls.Add(new Label { UseMnemonic = false, Text = "Search:", AutoSize = true, Padding = new Padding(0, 7, 0, 0) });
             txtQuery = new TextBox { Width = 380, Text = Web.DefaultQuery(game) };
             bar.Controls.Add(txtQuery);
             cmbSource = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 150 };
@@ -1414,12 +1415,12 @@ namespace SwanShellImageBuilder
                 AutoScroll = true, Padding = new Padding(8), BackColor = Color.FromArgb(48, 48, 48)
             };
             split.Panel2.Controls.Add(side);
-            lblSel = new Label { AutoSize = true, ForeColor = Color.White, MaximumSize = new Size(470, 0), Text = "Select an image on the left, or drop / paste one here." };
+            lblSel = new Label { UseMnemonic = false, AutoSize = true, ForeColor = Color.White, MaximumSize = new Size(470, 0), Text = "Select an image on the left, or drop / paste one here." };
             side.Controls.Add(lblSel);
-            side.Controls.Add(new Label { Text = "Full screen 224×144 (2×):", AutoSize = true, ForeColor = Color.Silver, Padding = new Padding(0, 8, 0, 0) });
+            side.Controls.Add(new Label { UseMnemonic = false, Text = "Full screen 224×144 (2×):", AutoSize = true, ForeColor = Color.Silver, Padding = new Padding(0, 8, 0, 0) });
             picFull = new PictureBox { Size = new Size(448, 288), BackColor = Color.Black };
             side.Controls.Add(picFull);
-            side.Controls.Add(new Label { Text = "Thumbnail 112×72 (2×, orange = frame hidden by the menu):", AutoSize = true, ForeColor = Color.Silver, Padding = new Padding(0, 8, 0, 0) });
+            side.Controls.Add(new Label { UseMnemonic = false, Text = "Thumbnail 112×72 (2×, orange = frame hidden by the menu):", AutoSize = true, ForeColor = Color.Silver, Padding = new Padding(0, 8, 0, 0) });
             picThumb = new PictureBox { Size = new Size(224, 144), BackColor = Color.Black };
             side.Controls.Add(picThumb);
             var btns = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Padding = new Padding(0, 10, 0, 0) };
@@ -1427,7 +1428,7 @@ namespace SwanShellImageBuilder
             btnUseThumb = new Button { Text = "Use as thumbnail", AutoSize = true, Enabled = false, BackColor = SystemColors.Control };
             btns.Controls.Add(btnAddFull); btns.Controls.Add(btnUseThumb);
             side.Controls.Add(btns);
-            lblSaved = new Label { AutoSize = true, ForeColor = Color.LightGreen, MaximumSize = new Size(470, 0) };
+            lblSaved = new Label { UseMnemonic = false, AutoSize = true, ForeColor = Color.LightGreen, MaximumSize = new Size(470, 0) };
             side.Controls.Add(lblSaved);
 
             var bottom = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, AutoSize = true };
@@ -1439,7 +1440,7 @@ namespace SwanShellImageBuilder
                 Text = "Google Images: click \"Open Google Images\", open the picture you like, then drag it into this window " +
                        "or right-click it → Copy image and press Ctrl+V here. Image files and links can be dropped too."
             }, 0, 0);
-            lblStatus = new Label { AutoSize = true, Padding = new Padding(8, 4, 0, 0), MaximumSize = new Size(480, 0) };
+            lblStatus = new Label { UseMnemonic = false, AutoSize = true, Padding = new Padding(8, 4, 0, 0), MaximumSize = new Size(480, 0) };
             bottom.Controls.Add(lblStatus, 1, 0);
             root.Controls.Add(bottom, 0, 2);
 
@@ -1892,12 +1893,20 @@ namespace SwanShellImageBuilder
             foreach (var slot in Slots())
             {
                 WebResult best = null;
+                // exact type name first, then a type that contains it (e.g. "background-hd")
                 foreach (var t in slot.Types)
                 {
                     best = mine.Where(m => string.Equals(m.Type, t, StringComparison.OrdinalIgnoreCase))
                                .OrderBy(m => RegionRank(m.Region)).FirstOrDefault();
                     if (best != null) break;
                 }
+                if (best == null)
+                    foreach (var t in slot.Types)
+                    {
+                        best = mine.Where(m => (m.Type ?? "").IndexOf(t, StringComparison.OrdinalIgnoreCase) >= 0)
+                                   .OrderBy(m => RegionRank(m.Region)).FirstOrDefault();
+                        if (best != null) break;
+                    }
                 res.Add(Tuple.Create(slot, best));
             }
             return res;
@@ -1967,7 +1976,7 @@ namespace SwanShellImageBuilder
             chkRomSub = new CheckBox { Text = "include subfolders", AutoSize = true };
             txtExt = new TextBox { Text = DefaultExt, Width = 260 };
             var extPanel = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, WrapContents = false };
-            extPanel.Controls.Add(new Label { Text = "ROM extensions:", AutoSize = true, Padding = new Padding(0, 6, 0, 0) });
+            extPanel.Controls.Add(new Label { UseMnemonic = false, Text = "ROM extensions:", AutoSize = true, Padding = new Padding(0, 6, 0, 0) });
             extPanel.Controls.Add(txtExt);
             extPanel.Controls.Add(chkRomSub);
             tf.Controls.Add(extPanel, 1, 1);
@@ -2007,7 +2016,7 @@ namespace SwanShellImageBuilder
             var thumbPanel = new FlowLayoutPanel { AutoSize = true, WrapContents = false };
             chkThumb = new CheckBox { Text = "create thumb.bmp", AutoSize = true, Checked = true, Padding = new Padding(0, 3, 0, 0) };
             thumbPanel.Controls.Add(chkThumb);
-            thumbPanel.Controls.Add(new Label { Text = "from:", AutoSize = true, Padding = new Padding(8, 6, 0, 0) });
+            thumbPanel.Controls.Add(new Label { UseMnemonic = false, Text = "from:", AutoSize = true, Padding = new Padding(8, 6, 0, 0) });
             cmbThumbSub = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 170 };
             cmbThumbSub.Items.Add("(automatic)"); cmbThumbSub.SelectedIndex = 0;
             thumbPanel.Controls.Add(cmbThumbSub);
@@ -2031,7 +2040,7 @@ namespace SwanShellImageBuilder
             btnCancel = new Button { Text = "Cancel", AutoSize = true, Enabled = false };
             btnOpen = new Button { Text = "Open destination", AutoSize = true };
             bp.Controls.Add(btnPreview); bp.Controls.Add(btnRun); bp.Controls.Add(btnCancel); bp.Controls.Add(btnOpen);
-            bp.Controls.Add(new Label { Text = "Preview zoom:", AutoSize = true, Padding = new Padding(16, 7, 0, 0) });
+            bp.Controls.Add(new Label { UseMnemonic = false, Text = "Preview zoom:", AutoSize = true, Padding = new Padding(16, 7, 0, 0) });
             cmbZoom = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 55 };
             cmbZoom.Items.AddRange(new object[] { "1×", "2×", "3×" }); cmbZoom.SelectedIndex = 1;
             bp.Controls.Add(cmbZoom);
@@ -2041,7 +2050,7 @@ namespace SwanShellImageBuilder
             sp.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             sp.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             progress = new ProgressBar { Dock = DockStyle.Fill, Height = 18 };
-            lblStatus = new Label { AutoSize = true, Text = "Ready", Padding = new Padding(6, 2, 0, 0) };
+            lblStatus = new Label { UseMnemonic = false, AutoSize = true, Text = "Ready", Padding = new Padding(6, 2, 0, 0) };
             sp.Controls.Add(progress, 0, 0); sp.Controls.Add(lblStatus, 1, 0);
             root.Controls.Add(sp, 0, 3);
 
@@ -2138,7 +2147,7 @@ namespace SwanShellImageBuilder
             Log("");
         }
 
-        static Label Lbl(string t) { return new Label { Text = t, AutoSize = true, Padding = new Padding(0, 6, 4, 0) }; }
+        static Label Lbl(string t) { return new Label { UseMnemonic = false, Text = t, AutoSize = true, Padding = new Padding(0, 6, 4, 0) }; }
 
         TextBox AddFolderRow(TableLayoutPanel t, int row, string label)
         {
@@ -2287,8 +2296,10 @@ namespace SwanShellImageBuilder
             foreach (var j in list) lstGames.Items.Add(ItemText(j));
             lstGames.EndUpdate();
             int with = list.Count(j => j.Full.Count > 0 || j.Thumb != null);
+            int onlyCard = list.Count(j => j.Full.Count == 0 && j.Thumb == null && j.OnCard.Count > 0);
             lblPreviewInfo.Text = list.Count + " games, " + with + " with images, " + (list.Count - with) +
-                                  " without.  ≈ = loose match,  – = no images.  Select a game to see its images.";
+                                  " without" + (onlyCard > 0 ? " (" + onlyCard + " of them already have images on the card)" : "") +
+                                  ".  ≈ = loose match,  – = no new images.  Select a game to see its images.";
             int sel = prev == null ? -1 : list.FindIndex(j => j.Folder == prev);
             if (sel < 0) sel = list.FindIndex(j => j.Full.Count > 0 || j.Thumb != null);
             if (sel >= 0 && sel == lstGames.SelectedIndex) ShowPreview();
@@ -2299,7 +2310,8 @@ namespace SwanShellImageBuilder
         static string ItemText(GameJob j)
         {
             int n = j.Full.Count + (j.Thumb != null ? 1 : 0);
-            return (n == 0 ? "–  " : (j.Fuzzy ? "≈  " : "    ")) + j.Folder + (n == 0 ? "   (no images)" : "");
+            if (n > 0) return (j.Fuzzy ? "≈  " : "    ") + j.Folder;
+            return "–  " + j.Folder + (j.OnCard.Count > 0 ? "   (only on the card: " + j.OnCard.Count + ")" : "   (no images)");
         }
 
         void OpenWebPicker()
@@ -2465,7 +2477,7 @@ namespace SwanShellImageBuilder
             var o = GetOptions(true);
             int zoom = cmbZoom.SelectedIndex + 1;
             string gdir = GameDir(job);
-            pnlImages.Controls.Add(new Label { Text = "Preparing preview…", AutoSize = true, ForeColor = Color.White, Padding = new Padding(8) });
+            pnlImages.Controls.Add(new Label { UseMnemonic = false, Text = "Preparing preview…", AutoSize = true, ForeColor = Color.White, Padding = new Padding(8) });
 
             new Thread(() =>
             {
@@ -2501,7 +2513,7 @@ namespace SwanShellImageBuilder
                 AutoSize = true, WrapContents = true, Margin = new Padding(6, 10, 6, 2),
                 MaximumSize = new Size(Math.Max(300, pnlImages.ClientSize.Width - 40), 0)
             };
-            hp.Controls.Add(new Label { Text = text, AutoSize = true, ForeColor = color, Font = new Font(Font, FontStyle.Bold), MaximumSize = new Size(560, 0) });
+            hp.Controls.Add(new Label { UseMnemonic = false, Text = text, AutoSize = true, ForeColor = color, Font = new Font(Font, FontStyle.Bold), MaximumSize = new Size(560, 0) });
             if (extra != null) hp.Controls.Add(extra);
             pnlImages.Controls.Add(hp);
             pnlImages.SetFlowBreak(hp, true);
@@ -2523,7 +2535,7 @@ namespace SwanShellImageBuilder
             else
             {
                 var existing = plan.Existing.ToList();
-                var delAll = new LinkLabel { Text = "Delete all of them…", AutoSize = true, LinkColor = Color.Orange, Margin = new Padding(12, 3, 3, 3) };
+                var delAll = new LinkLabel { UseMnemonic = false, Text = "Delete all of them…", AutoSize = true, LinkColor = Color.Orange, Margin = new Padding(12, 3, 3, 3) };
                 delAll.LinkClicked += delegate
                 {
                     if (!ConfirmDelete("these " + existing.Count + " files in\n" + plan.Dir + "\n\n" + string.Join("\n", existing.Select(e => e.Name)))) return;
@@ -2539,7 +2551,7 @@ namespace SwanShellImageBuilder
                         : (e.ShownIndex > 0 ? "shown as image " + e.ShownIndex : "NOT shown: the menu shows only the first " + Planner.MaxShown);
                     var lines = new List<Control> { InfoLabel(where, Color.Silver) };
                     if (e.Problem != null) lines.Add(InfoLabel("⚠ the menu ignores this file: " + e.Problem, Color.Orange));
-                    var del = new LinkLabel { Text = "Delete…", AutoSize = true, LinkColor = Color.Orange };
+                    var del = new LinkLabel { UseMnemonic = false, Text = "Delete…", AutoSize = true, LinkColor = Color.Orange };
                     del.LinkClicked += delegate
                     {
                         if (!ConfirmDelete("\n" + ex.Path)) return;
@@ -2572,6 +2584,7 @@ namespace SwanShellImageBuilder
                     int uses = plan.New.Count(x => x.Source.Path == it.Source.Path);
                     var rm = new LinkLabel
                     {
+                        UseMnemonic = false,
                         Text = "Delete the downloaded file " + Path.GetFileName(n.Source.Path) +
                                (uses > 1 ? " (it is the source of " + (n.IsThumb ? "this thumbnail and of an image too" : "this image and of the thumbnail too") + ")" : ""),
                         AutoSize = true, LinkColor = Color.Orange, MaximumSize = new Size(470, 0)
@@ -2590,7 +2603,7 @@ namespace SwanShellImageBuilder
 
         static Label InfoLabel(string text, Color c)
         {
-            return new Label { Text = text, AutoSize = true, ForeColor = c, MaximumSize = new Size(470, 0) };
+            return new Label { UseMnemonic = false, Text = text, AutoSize = true, ForeColor = c, MaximumSize = new Size(470, 0) };
         }
 
         void AddBox(string title, Color titleColor, List<Control> lines, Bitmap img, string noImageText)
@@ -2600,7 +2613,7 @@ namespace SwanShellImageBuilder
                 FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false,
                 Margin = new Padding(6), BackColor = Color.FromArgb(48, 48, 48)
             };
-            box.Controls.Add(new Label { Text = title, AutoSize = true, ForeColor = titleColor, Font = new Font(Font, FontStyle.Bold) });
+            box.Controls.Add(new Label { UseMnemonic = false, Text = title, AutoSize = true, ForeColor = titleColor, Font = new Font(Font, FontStyle.Bold) });
             foreach (var l in lines) box.Controls.Add(l);
             if (img != null)
                 box.Controls.Add(new PictureBox { Image = img, SizeMode = PictureBoxSizeMode.AutoSize, Margin = new Padding(0, 4, 0, 0) });
@@ -2673,7 +2686,22 @@ namespace SwanShellImageBuilder
                     list.Add(job);
 
                     bool hasAny = job.Full.Count > 0 || job.Thumb != null;
-                    if (!hasAny) { noImg++; Log("- " + job.Folder + "  : no images"); if (o.SkipEmpty) continue; }
+                    try
+                    {
+                        string cardDir = string.IsNullOrEmpty(o.OutRoot) ? null : Path.Combine(o.OutRoot, job.Folder);
+                        if (cardDir != null && Directory.Exists(cardDir))
+                            job.OnCard = Directory.GetFiles(cardDir).Select(Path.GetFileName)
+                                .Where(n => n.EndsWith(".bmp", StringComparison.OrdinalIgnoreCase))
+                                .OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
+                    }
+                    catch { }
+                    if (!hasAny)
+                    {
+                        noImg++;
+                        Log("- " + job.Folder + "  : no new images" +
+                            (job.OnCard.Count > 0 ? " (already on the card: " + string.Join(", ", job.OnCard) + ")" : " (none on the card either)"));
+                        if (o.SkipEmpty) continue;
+                    }
                     if (!SafeFolder(job.Folder)) { errors++; Log("! " + job.Folder + "  : not a valid folder name"); continue; }
 
                     Log("+ " + job.Folder + (job.Fuzzy ? "   [loose match]" : ""));
