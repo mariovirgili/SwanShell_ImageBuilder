@@ -25,9 +25,9 @@ using System.Windows.Forms;
 [assembly: System.Reflection.AssemblyDescription("Builds the game images for the swanshell / SwanShellDX menu of the nileswan flash cart")]
 [assembly: System.Reflection.AssemblyCompany("mariovirgili")]
 [assembly: System.Reflection.AssemblyCopyright("Copyright (C) 2026 mariovirgili - GPL-3.0")]
-[assembly: System.Reflection.AssemblyVersion("0.1.0.0")]
-[assembly: System.Reflection.AssemblyFileVersion("0.1.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersion("0.1")]
+[assembly: System.Reflection.AssemblyVersion("0.1.1.0")]
+[assembly: System.Reflection.AssemblyFileVersion("0.1.1.0")]
+[assembly: System.Reflection.AssemblyInformationalVersion("0.1.1")]
 
 namespace SwanShellImageBuilder
 {
@@ -2535,7 +2535,7 @@ namespace SwanShellImageBuilder
 
     static class Program
     {
-        public const string Version = "0.1";
+        public const string Version = "0.1.1";
 
         [DllImport("user32.dll")]
         static extern bool SetProcessDPIAware();
