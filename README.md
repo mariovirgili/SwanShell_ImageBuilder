@@ -21,6 +21,8 @@ on the SD card. It never overwrites or deletes anything already on the card.
 <SD card>\NILESWAN\IMAGES\<ROM name without extension>\thumb.bmp         112x72,  4 bpp, 16 colours
 ```
 
+![SwanShell Image Builder main window: folders, options and the Preview tab with the images already on the card](docs/main.jpg)
+
 ## Building
 
 No installation needed: the program is a single C# source file built with the `csc.exe` of the
@@ -48,6 +50,8 @@ If `build.bat` says `csc.exe` was not found, enable ".NET Framework 4.8" in
      reason it will not be written. The thumbnail shows in orange the 2-pixel frame the menu draws
      over it.
 5. **Build images** writes the files; details are in the *Log* tab.
+
+![Preview of a game: full-screen images 4-6 and the thumbnail with its menu frame in orange](docs/preview.jpg)
 
 Changing the fit mode, dithering or zoom redraws the selected game immediately.
 All options, folders and the window layout are saved when the program closes and restored at the
@@ -93,6 +97,8 @@ Picked images are saved as PNG in the `_web` subfolder of the image folder
 (`_web\<game>_1.png`, `_web\<game>_thumb.png`) and are then used like any other image.
 Each downloaded image has a delete link in the preview.
 
+![Search images online: ScreenScraper results on the left, the selected image converted to full screen and thumbnail on the right](docs/search.jpg)
+
 ## Autopilot (ScreenScraper)
 
 Next to *Search images online…* in the Preview tab, **Autopilot (ScreenScraper)** picks the images
@@ -124,6 +130,8 @@ replace, or skip the games already done).
 The mapping can be changed in `SwanShellImageBuilder.ini` (keys `autopilot_thumb`, `autopilot_1`
 … `autopilot_6`, each a comma-separated list of ScreenScraper media types tried in order; an empty
 value leaves that place unused).
+
+![Five games selected in the list: the button becomes "Autopilot (5 games)"](docs/autopilot.jpg)
 
 ## Existing images are never overwritten or deleted
 
