@@ -1355,7 +1355,8 @@ namespace SwanShellImageBuilder
             Text = "Search images online — " + game;
             AutoScaleMode = AutoScaleMode.Font;
             Font = new Font("Segoe UI", 9f);
-            Size = new Size(1180, 800);
+            var wa = Screen.PrimaryScreen.WorkingArea;
+            Size = new Size(Math.Min(1500, wa.Width - 40), Math.Min(900, wa.Height - 40));
             MinimumSize = new Size(900, 600);
             StartPosition = FormStartPosition.CenterParent;
             KeyPreview = true;
@@ -1366,7 +1367,7 @@ namespace SwanShellImageBuilder
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             Controls.Add(root);
 
-            var bar = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, WrapContents = false };
+            var bar = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Dock = DockStyle.Fill, WrapContents = true };
             bar.Controls.Add(new Label { Text = "Search:", AutoSize = true, Padding = new Padding(0, 7, 0, 0) });
             txtQuery = new TextBox { Width = 380, Text = Web.DefaultQuery(game) };
             bar.Controls.Add(txtQuery);
@@ -1852,8 +1853,9 @@ namespace SwanShellImageBuilder
             Text = "SwanShell Image Builder " + Program.Version + " — game images for nileswan / SwanShellDX";
             AutoScaleMode = AutoScaleMode.Font;
             Font = new Font("Segoe UI", 9f);
-            MinimumSize = new Size(820, 680);
-            Size = new Size(1040, 860);
+            var wa = Screen.PrimaryScreen.WorkingArea;
+            MinimumSize = new Size(Math.Min(820, wa.Width), Math.Min(600, wa.Height));
+            Size = new Size(Math.Min(1040, wa.Width - 20), Math.Min(860, wa.Height - 20));
             StartPosition = FormStartPosition.CenterScreen;
 
             var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Padding = new Padding(10) };
@@ -2299,7 +2301,11 @@ namespace SwanShellImageBuilder
         void AddHeader(string text, Color color, Control extra)
         {
             if (pnlImages.Controls.Count > 0) pnlImages.SetFlowBreak(pnlImages.Controls[pnlImages.Controls.Count - 1], true);
-            var hp = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(6, 10, 6, 2) };
+            var hp = new FlowLayoutPanel
+            {
+                AutoSize = true, WrapContents = true, Margin = new Padding(6, 10, 6, 2),
+                MaximumSize = new Size(Math.Max(300, pnlImages.ClientSize.Width - 40), 0)
+            };
             hp.Controls.Add(new Label { Text = text, AutoSize = true, ForeColor = color, Font = new Font(Font, FontStyle.Bold), MaximumSize = new Size(560, 0) });
             if (extra != null) hp.Controls.Add(extra);
             pnlImages.Controls.Add(hp);
@@ -2322,7 +2328,7 @@ namespace SwanShellImageBuilder
             else
             {
                 var existing = plan.Existing.ToList();
-                var delAll = new LinkLabel { Text = "Delete all of them…", AutoSize = true, LinkColor = Color.Orange, Padding = new Padding(12, 0, 0, 0) };
+                var delAll = new LinkLabel { Text = "Delete all of them…", AutoSize = true, LinkColor = Color.Orange, Margin = new Padding(12, 3, 3, 3) };
                 delAll.LinkClicked += delegate
                 {
                     if (!ConfirmDelete("these " + existing.Count + " files in\n" + plan.Dir + "\n\n" + string.Join("\n", existing.Select(e => e.Name)))) return;
@@ -2440,7 +2446,9 @@ namespace SwanShellImageBuilder
             SaveSettings();
 
             txtLog.Clear();
-            if (!preview) tabs.SelectedTab = tabLog;
+            tabs.SelectedTab = preview ? tabPreview : tabLog;
+            progress.Value = 0;
+            lblStatus.Text = preview ? "Preview…" : "Building…";
             cancel = false;
             SetBusy(true);
             worker = new Thread(() => Run(o)) { IsBackground = true };
